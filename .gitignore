@@ -2,3 +2,4 @@
 *.png
 *.npy
 data/
+plots/
