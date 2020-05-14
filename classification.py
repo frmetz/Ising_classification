@@ -9,6 +9,7 @@ from jax.experimental.stax import Dense, Relu, LogSoftmax
 from jax.experimental.stax import (BatchNorm, Conv, Dense, Flatten,
                                    Relu, LogSoftmax, Softmax, Sigmoid)
 
+import matplotlib.pyplot as plt
 from data_preprocessing import data_preprocessing
 
 
@@ -25,7 +26,8 @@ def accuracy(params, batch): # done
 @jit
 def update(i, opt_state, batch): # done
     params = get_params(opt_state)
-    return opt_update(i, grad(loss)(params, batch), opt_state)
+    losses = loss(params, batch)
+    return opt_update(i, grad(loss)(params, batch), opt_state), losses
 
 def data_stream():
     # num_train, num_batches, batch_size, train_images, train_labels
@@ -85,9 +87,12 @@ opt_init, opt_update, get_params = optimizers.momentum(step_size, mass=momentum_
 
 _, init_params = init_random_params(rng, (-1, L, L, 1))
 
+train_acc_list = []
+test_acc_list = []
+loss_list = []
 
-print(accuracy(init_params, (train_images, train_labels)))
-print(accuracy(init_params, (test_images, test_labels)))
+train_acc_list.append(accuracy(init_params, (train_images, train_labels)))
+test_acc_list.append(accuracy(init_params, (test_images, test_labels)))
 
 opt_state = opt_init(init_params)
 itercount = 0
@@ -96,13 +101,48 @@ print("\nStarting training...")
 for epoch in range(num_epochs):
     start_time = time.time()
     for _ in range(num_batches):
-        opt_state = update(itercount, opt_state, next(batches))
+        opt_state, losses = update(itercount, opt_state, next(batches))
+        loss_list.append(losses)
         itercount += 1
     epoch_time = time.time() - start_time
 
     params = get_params(opt_state)
     train_acc = accuracy(params, (train_images, train_labels))
     test_acc = accuracy(params, (test_images, test_labels))
+    train_acc_list.append(train_acc)
+    test_acc_list.append(test_acc)
     print("Epoch {} in {:0.2f} sec".format(epoch, epoch_time))
     print("Training set accuracy {}".format(train_acc))
     print("Test set accuracy {}".format(test_acc))
+
+
+plt.rc('font', family='serif')#, size=14)
+plt.rc('text', usetex=True)
+#plt.rc('xtick', labelsize=14)
+#plt.rc('ytick', labelsize=14)
+#plt.rc('axes', labelsize=14)
+#plt.rcParams['axes.labelsize']  = 10
+#plt.rcParams['legend.fontsize'] = 10
+#plt.rcParams['xtick.labelsize'] = 8
+#plt.rcParams['ytick.labelsize'] = 8
+
+x = jnp.linspace(0, num_epochs, num_epochs+1)
+plt.figure()
+plt.title('Training curve')
+plt.xlabel('epochs')
+plt.ylabel('Accuracy')
+plt.plot(x, train_acc_list, label="train accuracy")
+plt.plot(x, test_acc_list, label="test accuracy")
+plt.legend(loc='lower right')
+plt.tight_layout()
+plt.savefig('plots/training_accuracy.pdf')
+plt.close()
+
+plt.figure()
+plt.title('Training curve')
+plt.xlabel('update steps')
+plt.ylabel('Loss')
+plt.plot(loss_list)
+plt.tight_layout()
+plt.savefig('plots/training_loss.pdf')
+plt.close()
