@@ -21,17 +21,10 @@ class Classifier():
 
         self.rng = random.PRNGKey(seed)
 
-        #init_random_params2, predict2 = stax.serial(Conv(out_chan=10, filter_shape=(2, 2), strides=(1, 1), padding="VALID"),
-        #                                 BatchNorm(), Relu,
-        #                                 #Conv(10, (3, 3), (1, 1), padding="SAME"), Relu,
-        #                                 Flatten,
-        #                                 #Dense(64),
-        #                                 Dense(1),
-        #                                 #LogSoftmax)
-        #                                 Softmax)
-
         self.CNN = CNN
+        L = 40
         if CNN:
+            self.input_shape = (-1, L, L, 1)
             self.init_random_params, self.predict = stax.serial(
                                                                 #Conv(out_chan=64, filter_shape=(2, 2), strides=(1, 1), padding="VALID"),
                                                                 PeriodicConv(out_chan=64, filter_shape=(2, 2), strides=(1, 1), padding='VALID'),
@@ -42,16 +35,26 @@ class Classifier():
                                                                 Dense(1),
                                                                 Sigmoid
                                                                 )
+        else:
+            self.input_shape = (-1, L*L)
+            self.init_random_params, self.predict = stax.serial(
+                                                                Dense(100),
+                                                                Relu,
+                                                                Dense(100),
+                                                                Relu,
+                                                                Dense(1),
+                                                                Sigmoid
+                                                                )
+
 
 
         momentum_mass = 0.9
         self.opt_init, self.opt_update, self.get_params = optimizers.momentum(step_size, mass=momentum_mass)
         #self.opt_init, self.opt_update, self.get_params = optimizers.adam(0.0001)
 
-        L = 40
-        _, init_params = self.init_random_params(self.rng, (-1, L, L, 1))
-        self.opt_state = self.opt_init(init_params)
-        self.params = init_params #self.get_params(opt_state)
+        _, self.init_params = self.init_random_params(self.rng, self.input_shape)
+        self.opt_state = self.opt_init(self.init_params)
+        self.params = self.init_params
 
 
     def loss(self, params, batch): # done
@@ -90,23 +93,24 @@ class Classifier():
         test_images = jnp.load('data/x_train.npy')
         test_labels = jnp.load('data/y_train.npy')
 
+        if not self.CNN:
+            train_images = jnp.reshape(train_images, self.input_shape)
+            test_images = jnp.reshape(test_images, self.input_shape)
+
         num_train = train_images.shape[0]
         num_complete_batches, leftover = divmod(num_train, batch_size)
         num_batches = num_complete_batches + bool(leftover)
         batches = self.data_stream(train_images, train_labels, num_train, num_batches, batch_size)
-
-        L = train_images.shape[2]
-        _, init_params = self.init_random_params(self.rng, (-1, L, L, 1))
 
 
         train_acc_list = []
         test_acc_list = []
         loss_list = []
 
-        train_acc_list.append(self.accuracy(init_params, (train_images, train_labels)))
-        test_acc_list.append(self.accuracy(init_params, (test_images, test_labels)))
+        train_acc_list.append(self.accuracy(self.init_params, (train_images, train_labels)))
+        test_acc_list.append(self.accuracy(self.init_params, (test_images, test_labels)))
 
-        opt_state = self.opt_init(init_params)
+        opt_state = self.opt_init(self.init_params)
         itercount = 0
 
         print("\nStarting training...")
