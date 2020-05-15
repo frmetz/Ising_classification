@@ -30,7 +30,10 @@ from jax.nn.initializers import glorot_normal, normal, ones, zeros
 def periodic_padding(inputs,filter_shape,strides):
     n_x=filter_shape[0]-strides[0]
     n_y=filter_shape[1]-strides[1]
-    return jnp.pad(inputs, ((0,0),(0,0),(0,n_x),(0,n_y)), mode='wrap')
+    #return jnp.pad(inputs, ((0,0),(0,0),(0,n_x),(0,n_y)), mode='wrap')
+    return jnp.pad(inputs, ((0,0),(0,n_x),(0,n_y),(0,0)), mode='wrap')
+
+
 
 
 def PeriodicConv(out_chan, filter_shape,
@@ -45,7 +48,9 @@ def PeriodicConv(out_chan, filter_shape,
     def init_fun(rng, input_shape):
 
         # add padding dimensions for periodic BC; move this line into conv_general_shape_tuple after defining padding='PERIODIC'
-        input_shape+=np.array((0,0)+strides)
+
+        #input_shape+=np.array((0,0)+strides) # new
+        input_shape+=np.array([0]+list(strides)+[0]) # new
 
         filter_shape_iter = iter(filter_shape)
         kernel_shape = [out_chan if c == 'O' else
@@ -70,7 +75,7 @@ def PeriodicConv(out_chan, filter_shape,
 
         # move this line into lax.conv_general_dilated after defining padding='PERIODIC'
         inputs=periodic_padding(inputs.astype(dtype),filter_shape,strides)
-
+        #print(inputs.shape)
         if not ignore_b:
             W, b = params
             return lax.conv_general_dilated(inputs, W, strides, padding, one, one,
@@ -79,5 +84,6 @@ def PeriodicConv(out_chan, filter_shape,
             W = params
             return lax.conv_general_dilated(inputs, W, strides, padding, one, one,
                                             dimension_numbers)
+
 
     return init_fun, apply_fun

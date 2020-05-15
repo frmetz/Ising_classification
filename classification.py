@@ -13,10 +13,14 @@ from jax.experimental.stax import (BatchNorm, Conv, Dense, Flatten,
 
 import matplotlib.pyplot as plt
 from data_preprocessing import data_preprocessing
+from architectures import PeriodicConv
 
 class Classifier():
 
-    def __init__(self, step_size=0.001, seed=0):
+    def __init__(self, CNN="true", step_size=0.001, seed=0):
+
+        self.rng = random.PRNGKey(seed)
+
         #init_random_params2, predict2 = stax.serial(Conv(out_chan=10, filter_shape=(2, 2), strides=(1, 1), padding="VALID"),
         #                                 BatchNorm(), Relu,
         #                                 #Conv(10, (3, 3), (1, 1), padding="SAME"), Relu,
@@ -26,20 +30,29 @@ class Classifier():
         #                                 #LogSoftmax)
         #                                 Softmax)
 
+        self.CNN = CNN
+        if CNN:
+            self.init_random_params, self.predict = stax.serial(
+                                                                #Conv(out_chan=64, filter_shape=(2, 2), strides=(1, 1), padding="VALID"),
+                                                                PeriodicConv(out_chan=64, filter_shape=(2, 2), strides=(1, 1), padding='VALID'),
+                                                                Relu,
+                                                                Flatten,
+                                                                Dense(64),
+                                                                Relu,
+                                                                Dense(1),
+                                                                Sigmoid
+                                                                )
 
-        self.init_random_params, self.predict = stax.serial(Conv(out_chan=64, filter_shape=(2, 2), strides=(1, 1), padding="VALID"),
-                                                            Relu,
-                                                            Flatten,
-                                                            Dense(64),
-                                                            Relu,
-                                                            Dense(1),
-                                                            Sigmoid)
 
         momentum_mass = 0.9
         self.opt_init, self.opt_update, self.get_params = optimizers.momentum(step_size, mass=momentum_mass)
         #self.opt_init, self.opt_update, self.get_params = optimizers.adam(0.0001)
 
-        self.rng = random.PRNGKey(seed)
+        L = 40
+        _, init_params = self.init_random_params(self.rng, (-1, L, L, 1))
+        self.opt_state = self.opt_init(init_params)
+        self.params = init_params #self.get_params(opt_state)
+
 
     def loss(self, params, batch): # done
         inputs, targets = batch
@@ -50,6 +63,9 @@ class Classifier():
         inputs, target_class = batch
         predicted_class = jnp.where(self.predict(params, inputs) < 0.5, 0, 1)
         return jnp.mean(predicted_class == target_class)
+
+    def classify(self, inputs):
+        return self.predict(self.params, inputs)
 
     @partial(jit, static_argnums=(0,))
     def update(self, i, opt_state, batch): # done
@@ -82,6 +98,7 @@ class Classifier():
         L = train_images.shape[2]
         _, init_params = self.init_random_params(self.rng, (-1, L, L, 1))
 
+
         train_acc_list = []
         test_acc_list = []
         loss_list = []
@@ -110,6 +127,8 @@ class Classifier():
             print("Training set accuracy {}".format(train_acc))
             print("Test set accuracy {}".format(test_acc))
 
+        self.opt_state = opt_state
+        self.params = params
         return train_acc_list, test_acc_list, loss_list
 
 def plot_training(train_acc_list, test_acc_list, loss_list):
@@ -146,6 +165,6 @@ def plot_training(train_acc_list, test_acc_list, loss_list):
     plt.close()
 
 
-ising_classifier = Classifier()
-train_acc_list, test_acc_list, loss_list = ising_classifier.train()
-plot_training(train_acc_list, test_acc_list, loss_list)
+#ising_classifier = Classifier()
+#train_acc_list, test_acc_list, loss_list = ising_classifier.train()
+#plot_training(train_acc_list, test_acc_list, loss_list)
