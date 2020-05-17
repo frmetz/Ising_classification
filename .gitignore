@@ -1,2 +1,3 @@
-
+*.npy
 latex/
+.DS_Store
