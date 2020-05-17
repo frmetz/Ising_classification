@@ -22,7 +22,7 @@ def flip(spin_config):
 def mcmc_sample(beta, N_mc=1, L=40):
     """MCMC for generating spin configurations at a given temperature"""
     thermalization_time = L ** 4
-    corr_time = L ** 2
+    corr_time = 10 * L ** 2
 
     spin_config = np.random.choice([-1, 1], size=(L, L))
     config_energy = energy(spin_config)
@@ -53,25 +53,14 @@ def mcmc_sample(beta, N_mc=1, L=40):
 def save_data(temperatures):
     """Generates and saves spin configurations at different temperatures"""
     L = 40
-    N_mc = 1e3
+    N_mc = 5e3  # 5000 except for critical region
 
-    magnetization_avs = []
-    magnetization_vars = []
     for T in temperatures:
         print(T)
         energies, configs = mcmc_sample(beta=1 / T, N_mc=N_mc, L=L)
-        print(energies)
 
         np.save("data/spins_T%s.npy" % T, configs)
         np.save("data/energies_T%s.npy" % T, energies)
-
-        magnetization_density = np.array([np.sum(config) / config.size for config in configs])
-        print(magnetization_density)
-        magnetization_avs.append(np.mean(magnetization_density))
-        magnetization_vars.append(np.var(magnetization_density))
-        print(np.where(np.abs(magnetization_density) < 0.5, 0, 1))
-
-        print("next")
 
 
 def plot_data(temperatures):
@@ -136,7 +125,7 @@ def plot_data(temperatures):
     plt.close()
 
 
-#temperatures = [0.1, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+#temperatures = [1.0, 1.5, 3.0, 3.5, 4.0]
 #temperatures = np.linspace(1.0, 4.0, 7)
 # save_data(temperatures)
 # plot_data(temperatures)
