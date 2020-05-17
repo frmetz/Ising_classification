@@ -1,5 +1,2 @@
-*.pdf
-*.png
-*.npy
-data/
-plots/
+
+latex/
