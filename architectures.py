@@ -35,15 +35,18 @@ def PeriodicConv(out_chan, filter_shape,
 
         # add padding dimensions for periodic BC; move this line into conv_general_shape_tuple after defining padding='PERIODIC'
 
-        # input_shape+=np.array((0,0)+strides) # new
-        input_shape += np.array([0]+list(strides)+[0])  # new
+
+        add_input = list(np.array(filter_shape) - 1) # new
+        input_shape += np.array([0]+add_input+[0])  # only works with stride=(1,1)
 
         filter_shape_iter = iter(filter_shape)
         kernel_shape = [out_chan if c == 'O' else
                         input_shape[lhs_spec.index('C')] if c == 'I' else
                         next(filter_shape_iter) for c in rhs_spec]
+
         output_shape = lax.conv_general_shape_tuple(
             input_shape, kernel_shape, strides, padding, dimension_numbers)
+
 
         k1, k2 = random.split(rng)
 
@@ -52,7 +55,7 @@ def PeriodicConv(out_chan, filter_shape,
             bias_shape = tuple(itertools.dropwhile(lambda x: x == 1, bias_shape))
 
             W, b = W_init(k1, kernel_shape, dtype=dtype), b_init(k2, bias_shape, dtype=dtype)
-            return output_shape, (W, b)
+            return tuple(output_shape), (W, b)
         else:
             W = W_init(k1, kernel_shape, dtype=dtype)
             return output_shape, (W, )
