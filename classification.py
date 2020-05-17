@@ -186,6 +186,6 @@ def plot_training(train_acc_list, test_acc_list, loss_list):
     plt.savefig('plots/training_loss.pdf')
     plt.close()
 
-
-#ising_classifier = Classifier()
-# plot_training(*ising_classifier.train())
+if __name__ == '__main__':
+    ising_classifier = Classifier()
+    plot_training(*ising_classifier.train())

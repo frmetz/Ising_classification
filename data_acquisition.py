@@ -124,8 +124,8 @@ def plot_data(temperatures):
     plt.savefig("plots/energy_var.pdf")
     plt.close()
 
-
-#temperatures = [1.0, 1.5, 3.0, 3.5, 4.0]
-#temperatures = np.linspace(1.0, 4.0, 7)
-# save_data(temperatures)
-# plot_data(temperatures)
+if __name__ == '__main__':
+    temperatures = [1.0, 1.5, 3.0, 3.5, 4.0]
+    #temperatures = np.linspace(1.0, 4.0, 7)
+    save_data(temperatures)
+    plot_data(temperatures)
