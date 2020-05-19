@@ -24,7 +24,6 @@ class Classifier():
 
     def __init__(self, CNN="true", L=40, step_size=0.001, seed=0):
         """Defines neural network architecture, parameter initialization, and optimizer"""
-        self.rng = random.PRNGKey(seed)
 
         self.CNN = CNN
         if CNN:
@@ -61,7 +60,8 @@ class Classifier():
             step_size, mass=momentum_mass)
         #self.opt_init, self.opt_update, self.get_params = optimizers.adam(0.0001)
 
-        _, self.init_params = self.init_random_params(self.rng, self.input_shape)
+        rng = random.PRNGKey(seed)
+        _, self.init_params = self.init_random_params(rng, self.input_shape)
         self.opt_state = self.opt_init(self.init_params)
         self.params = self.init_params
 
@@ -90,8 +90,10 @@ class Classifier():
 
     def data_stream(self, train_images, train_labels, num_train, num_batches, batch_size):
         """Returns batches of data for training"""
+        key = random.PRNGKey(0)
         while True:
-            perm = random.permutation(self.rng, num_train)
+            key, subkey = random.split(key)
+            perm = random.permutation(subkey, num_train)
             for i in range(num_batches):
                 batch_idx = perm[i * batch_size:(i + 1) * batch_size]
                 yield train_images[batch_idx], train_labels[batch_idx]
